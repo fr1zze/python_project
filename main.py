@@ -69,7 +69,7 @@ approval_result = approval_status_check(approval_status, total_cost,
                                         budget_limit)
 
 print("Система учета заявок на командировки")
-print("------------------------------------")
+print("--------------------------------------------")
 
 print(f"Номер заявки: {request_id}")
 print(f"Сотрудник: {employee_name} (ID: {employee_id})")
@@ -98,3 +98,4 @@ if trip_date_valid:
 else:
     print("Ошибка: Даты введены некорректно.")
 
+print("--------------------------------------------")
