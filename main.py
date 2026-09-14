@@ -1,7 +1,7 @@
 from datetime import datetime
 
 
-# Данные сотрудника 
+# Данные сотрудника
 employee_id = 101
 employee_name = "Шлапаков Максим"
 employee_position = "Разработчик"
@@ -23,7 +23,7 @@ daily_salary = 3000.00
 request_id = 404
 budget_limit = 55000.00
 
-# Данные соглосования 
+# Данные соглосования
 approval_status = True
 
 
@@ -33,7 +33,7 @@ def check_trip_dates(start_date, end_date):
         return False
     elif start_date >= end_date:
         return False
-
+    
     return True
 
 
@@ -42,7 +42,6 @@ def calculate_trip_days(start_date, end_date):
     total_days = (end_date - start_date).days + 1
     if total_days <= 0:
         return 0
-    
     return total_days
 
 
