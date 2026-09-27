@@ -1,15 +1,30 @@
 from pathlib import Path
 
-from employees import add_employee, find_employee
-from storage import load_data, save_data
+from employees import (
+    Employee,
+    add_employee,
+    find_employee,
+)
+from storage import (
+    load_employees,
+    load_requests,
+    save_employees,
+    save_requests,
+)
 from travel_requests import (
-    approve_request,
+    TravelRequest,
     create_request,
+    find_request,
     find_requests_by_employee,
     get_request_statistics,
     sort_requests_by_date,
 )
-from utils import input_date, input_float, input_int
+from trips import Trip
+from utils import (
+    input_date,
+    input_float,
+    input_int,
+)
 
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
@@ -18,56 +33,38 @@ EMPLOYEES_FILE = DATA_DIR / "employees.json"
 REQUESTS_FILE = DATA_DIR / "requests.json"
 
 
-def show_requests(
-    requests: list[dict],
-    employees: list[dict],
+def show_employees(
+    employees: list[Employee],
 ) -> None:
-    """Показать заявки с именами сотрудников."""
-    if not requests:
-        print("Заявки не найдены.")
-        return
-
-    for request in requests:
-        employee = find_employee(
-            employees,
-            request["employee_id"],
-        )
-
-        if employee:
-            name = employee["name"]
-        else:
-            name = "Неизвестный сотрудник"
-
-        trip = request["trip"]
-
-        print(
-            f'№{request["id"]}: {name}, '
-            f'{trip["destination"]}, '
-            f'{trip["start_date"]} — {trip["end_date"]}, '
-            f'{request["total_cost"]:.2f} руб., '
-            f'{request["approval"]["status"]}'
-        )
-
-
-def show_employees(employees: list[dict]) -> None:
     """Показать список сотрудников."""
     if not employees:
         print("Сотрудники не найдены.")
-        return
 
     for employee in employees:
-        print(
-            f'ID: {employee["id"]}, '
-            f'ФИО: {employee["name"]}, '
-            f'должность: {employee["position"]}'
-        )
+        print(employee)
+
+
+def show_requests(
+    requests: list[TravelRequest],
+) -> None:
+    """Показать список заявок."""
+    if not requests:
+        print("Заявки не найдены.")
+
+    for request in requests:
+        print(request)
 
 
 def main() -> None:
-    """Загрузить данные и показать консольное меню."""
+    """Загрузить объекты и показать меню."""
     try:
-        employees = load_data(EMPLOYEES_FILE)
-        requests = load_data(REQUESTS_FILE)
+        employees = load_employees(
+            EMPLOYEES_FILE
+        )
+        requests = load_requests(
+            REQUESTS_FILE,
+            employees,
+        )
 
     except ValueError as error:
         print(f"Ошибка загрузки: {error}")
@@ -76,104 +73,96 @@ def main() -> None:
     while True:
         print("\n=== Заявки на командировки ===")
         print("1. Показать все заявки")
-        print("2. Показать сотрудников")
-        print("3. Добавить сотрудника")
-        print("4. Создать заявку")
-        print("5. Найти заявки сотрудника")
-        print("6. Показать заявки по дате")
-        print("7. Согласовать или отклонить заявку")
-        print("8. Статистика")
+        print("2. Добавить сотрудника")
+        print("3. Создать заявку")
+        print("4. Найти заявки сотрудника")
+        print("5. Показать заявки по дате")
+        print("6. Согласовать или отклонить заявку")
+        print("7. Статистика")
+        print("8. Показать сотрудников")
         print("0. Выход")
 
-        choice = input("Выберите действие: ").strip()
+        choice = input(
+            "Выберите действие: "
+        ).strip()
 
         try:
             if choice == "0":
-                print("Выход из программы...")
                 return
 
             elif choice == "1":
-                show_requests(requests, employees)
+                show_requests(requests)
 
             elif choice == "2":
-                show_employees(employees)   
-
-            elif choice == "3":
-                name = input("ФИО: ")
-                position = input("Должность: ")
-
                 employee = add_employee(
                     employees,
-                    name,
-                    position,
+                    input("ФИО: "),
+                    input("Должность: "),
                 )
 
-                save_data(EMPLOYEES_FILE, employees)
+                save_employees(
+                    EMPLOYEES_FILE,
+                    employees,
+                )
 
                 print(
-                    f'Сотрудник добавлен, ID: {employee["id"]}'
+                    f"Добавлен сотрудник: {employee}"
                 )
 
-            elif choice == "4":
+            elif choice == "3":
                 employee_id = input_int(
                     "ID сотрудника: "
                 )
 
-                if find_employee(
+                selected_employee = find_employee(
                     employees,
                     employee_id,
-                ) is None:
+                )
+
+                if selected_employee is None:
                     raise ValueError(
                         "Сотрудник с таким ID не найден"
                     )
 
-                destination = input(
-                    "Место назначения: "
-                )
-                purpose = input(
-                    "Цель поездки: "
-                )
-
-                start_date = input_date(
-                    "Начало (ДД.ММ.ГГГГ): "
-                )
-                end_date = input_date(
-                    "Окончание (ДД.ММ.ГГГГ): "
-                )
-
-                travel_cost = input_float(
-                    "Стоимость проезда: "
-                )
-                hotel_cost = input_float(
-                    "Стоимость проживания: "
-                )
-                daily_allowance = input_float(
-                    "Суточные за день: "
-                )
-                budget_limit = input_float(
-                    "Лимит бюджета: "
+                trip = Trip(
+                    input("Место назначения: "),
+                    input("Цель поездки: "),
+                    input_date(
+                        "Начало (ДД.ММ.ГГГГ): "
+                    ),
+                    input_date(
+                        "Окончание (ДД.ММ.ГГГГ): "
+                    ),
+                    input_float(
+                        "Стоимость проезда: "
+                    ),
+                    input_float(
+                        "Стоимость проживания: "
+                    ),
+                    input_float(
+                        "Суточные за день: "
+                    ),
                 )
 
                 request = create_request(
                     requests,
-                    employee_id,
-                    destination,
-                    purpose,
-                    start_date,
-                    end_date,
-                    travel_cost,
-                    hotel_cost,
-                    daily_allowance,
-                    budget_limit,
+                    employee,
+                    trip,
+                    input_float(
+                        "Лимит бюджета: "
+                    ),
                 )
 
-                save_data(REQUESTS_FILE, requests)
+                save_requests(
+                    REQUESTS_FILE,
+                    requests,
+                )
 
                 print(
-                    f'Заявка №{request["id"]} создана.'
+                    f"Создана заявка №{request.id}"
                 )
 
-            elif choice == "5":
+            elif choice == "4":
                 employee_id = input_int(
                     "ID сотрудника: "
                 )
@@ -183,19 +172,16 @@ def main() -> None:
                     employee_id,
                 )
 
-                show_requests(found, employees)
+                show_requests(found)
+
+            elif choice == "5":
+                sorted_requests = (
+                    sort_requests_by_date(requests)
+                )
+
+                show_requests(sorted_requests)
 
             elif choice == "6":
-                sorted_requests = sort_requests_by_date(
-                    requests
-                )
-
-                show_requests(
-                    sorted_requests,
-                    employees,
-                )
-
-            elif choice == "7":
                 request_id = input_int(
                     "Номер заявки: "
                 )
@@ -209,20 +195,26 @@ def main() -> None:
                         "Введите д или н"
                     )
 
-                request = approve_request(
+                request = find_request(
                     requests,
                     request_id,
+                )
+
+                request.approve(
+                    requests,
                     decision == "д",
                 )
 
-                save_data(REQUESTS_FILE, requests)
-
-                print(
-                    f'Статус: '
-                    f'{request["approval"]["status"]}'
+                save_requests(
+                    REQUESTS_FILE,
+                    requests,
                 )
 
-            elif choice == "8":
+                print(
+                    f"Статус: {request.approval}"
+                )
+
+            elif choice == "7":
                 stats = get_request_statistics(
                     requests
                 )
@@ -238,8 +230,13 @@ def main() -> None:
                     f'{stats["approved_cost"]:.2f} руб.'
                 )
 
+            elif choice == "8":
+                show_employees(employees)
+
             else:
-                print("Такого пункта меню нет.")
+                print(
+                    "Такого пункта меню нет."
+                )
 
         except ValueError as error:
             print(f"Ошибка: {error}")

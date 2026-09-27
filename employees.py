@@ -1,37 +1,53 @@
+class Employee:
+    """Сотрудник организации."""
+
+    def __init__(
+        self,
+        employee_id: int,
+        name: str,
+        position: str,
+    ) -> None:
+        if not name.strip() or not position.strip():
+            raise ValueError(
+                "Укажите ФИО и должность сотрудника"
+            )
+
+        self.id = employee_id
+        self.name = name.strip()
+        self.position = position.strip()
+
+    def __str__(self) -> str:
+        return f"ID {self.id}: {self.name}, {self.position}"
+
+
 def find_employee(
-    employees: list[dict],
+    employees: list[Employee],
     employee_id: int,
-) -> dict | None:
-    """Поиск сотрудника по идентификатору."""
+) -> Employee | None:
+    """Найти сотрудника в списке объектов."""
     for employee in employees:
-        if employee["id"] == employee_id:
+        if employee.id == employee_id:
             return employee
 
     return None
 
 
 def add_employee(
-    employees: list[dict],
+    employees: list[Employee],
     name: str,
     position: str,
-) -> dict:
-    """Добавить сотрудника и вернуть его данные."""
-    name = name.strip()
-    position = position.strip()
-
-    if not name or not position:
-        raise ValueError("Укажите имя и должность сотрудника")
-
+) -> Employee:
+    """Создать сотрудника и добавить его в список."""
     employee_id = max(
-        (employee["id"] for employee in employees),
+        (item.id for item in employees),
         default=0,
     ) + 1
 
-    employee = {
-        "id": employee_id,
-        "name": name,
-        "position": position,
-    }
+    employee = Employee(
+        employee_id,
+        name,
+        position,
+    )
 
     employees.append(employee)
     return employee
