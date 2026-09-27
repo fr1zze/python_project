@@ -1,0 +1,38 @@
+[
+  {
+    "id": 404,
+    "employee_id": 101,
+    "trip": {
+      "destination": "Москва",
+      "purpose": "Бизнес-встреча",
+      "start_date": "2026-02-12",
+      "end_date": "2026-02-24",
+      "travel_cost": 8000.0,
+      "hotel_cost": 5000.0,
+      "daily_allowance": 3000.0
+    },
+    "total_cost": 52000.0,
+    "budget_limit": 55000.0,
+    "approval": {
+      "status": "одобрена"
+    }
+  },
+  {
+    "id": 405,
+    "employee_id": 102,
+    "trip": {
+      "destination": "Курск",
+      "purpose": "Подписание договора",
+      "start_date": "2026-09-15",
+      "end_date": "2026-09-19",
+      "travel_cost": 30000.0,
+      "hotel_cost": 3000.0,
+      "daily_allowance": 1000.0
+    },
+    "total_cost": 38000.0,
+    "budget_limit": 50000.0,
+    "approval": {
+      "status": "одобрена"
+    }
+  }
+]
