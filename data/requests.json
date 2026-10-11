@@ -34,5 +34,23 @@
     "approval": {
       "status": "одобрена"
     }
+  },
+  {
+    "id": 406,
+    "employee_id": 104,
+    "trip": {
+      "destination": "Казань",
+      "purpose": "Покупка ноутбуков",
+      "start_date": "2026-01-15",
+      "end_date": "2026-01-18",
+      "travel_cost": 200000.0,
+      "hotel_cost": 15000.0,
+      "daily_allowance": 1500.0
+    },
+    "total_cost": 221000.0,
+    "budget_limit": 300000.0,
+    "approval": {
+      "status": "отклонена"
+    }
   }
 ]

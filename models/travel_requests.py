@@ -1,6 +1,6 @@
-from approval import Approval
-from employees import Employee
-from trips import Trip
+from models.approval import Approval
+from models.employees import Employee
+from models.trips import Trip
 
 
 class TravelRequest:

@@ -1,4 +1,4 @@
-from employees import Employee, add_employee, find_employee
+from models.employees import Employee, add_employee, find_employee
 
 
 def test_employee_attributes():

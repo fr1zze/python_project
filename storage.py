@@ -3,10 +3,10 @@ import json
 from datetime import date
 from pathlib import Path
 
-from approval import Approval
-from employees import Employee, find_employee
-from travel_requests import TravelRequest
-from trips import Trip
+from models.approval import Approval
+from models.employees import Employee, find_employee
+from models.travel_requests import TravelRequest
+from models.trips import Trip
 
 
 def load_data(filename: Path) -> list[dict]:

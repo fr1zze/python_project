@@ -1,17 +1,19 @@
 from pathlib import Path
 
-from employees import (
+from models.employees import (
     Employee,
     add_employee,
     find_employee,
 )
+
 from storage import (
     load_employees,
     load_requests,
     save_employees,
     save_requests,
 )
-from travel_requests import (
+
+from models.travel_requests import (
     TravelRequest,
     create_request,
     find_request,
@@ -19,7 +21,9 @@ from travel_requests import (
     get_request_statistics,
     sort_requests_by_date,
 )
-from trips import Trip
+
+from models.trips import Trip
+
 from utils import (
     input_date,
     input_float,
@@ -146,7 +150,7 @@ def main() -> None:
 
                 request = create_request(
                     requests,
-                    employee,
+                    selected_employee,
                     trip,
                     input_float(
                         "Лимит бюджета: "

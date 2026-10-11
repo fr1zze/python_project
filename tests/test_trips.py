@@ -1,6 +1,6 @@
 from datetime import date
 
-from trips import Trip
+from models.trips import Trip
 
 
 def test_trip_days_and_cost():

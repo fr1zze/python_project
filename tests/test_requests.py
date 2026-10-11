@@ -2,14 +2,14 @@ from datetime import date
 
 import pytest
 
-from employees import Employee
-from travel_requests import (
+from models.employees import Employee
+from models.travel_requests import (
     create_request,
     find_requests_by_employee,
     get_request_statistics,
     sort_requests_by_date,
 )
-from trips import Trip
+from models.trips import Trip
 
 
 def test_request_links_objects():
