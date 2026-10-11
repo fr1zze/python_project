@@ -40,7 +40,7 @@
     "employee_id": 104,
     "trip": {
       "destination": "Казань",
-      "purpose": "Покупка ноутбуков",
+      "purpose": "Покупка мат. плат",
       "start_date": "2026-01-15",
       "end_date": "2026-01-18",
       "travel_cost": 200000.0,
