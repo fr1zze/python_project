@@ -594,24 +594,6 @@ handler404 = "homepage.views.page_not_found"
 При включённой отладке неизвестный URL показывает
 техническую страницу Django.
 
-## Git
-
-Работа продолжается в существующем репозитории.
-
-Ссылка на репозиторий: указать фактический URL GitLab.
-
-Коммиты практической работы начинаются с `PR5:`.
-
-Пример:
-
-```powershell
-git status
-git diff
-git add .
-git commit -m "PR5: add forms and update documentation"
-git push
-```
-
 ## Текущее состояние
 
 Консольная версия ПР3 дополнена веб-интерфейсом на Django.
