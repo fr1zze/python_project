@@ -1,0 +1,145 @@
+body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: #f5f6fa;
+    color: #253046;
+}
+
+.site-header {
+    background: white;
+    border-bottom: 1px solid #e5e8ef;
+}
+
+.brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 20px;
+    color: #253046;
+    text-decoration: none;
+}
+
+.site-logo {
+    width: 36px;
+    height: 36px;
+}
+
+.nav-link {
+    color: #566176;
+    font-weight: 500;
+    border-radius: 8px;
+}
+
+.nav-link:hover {
+    background: #eef2ff;
+    color: #3858c9;
+}
+
+main {
+    flex: 1;
+    padding-top: 32px;
+    padding-bottom: 40px;
+}
+
+h1 {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 20px;
+}
+
+.card {
+    border: 1px solid #e5e8ef;
+    border-radius: 14px;
+    box-shadow: 0 4px 16px rgba(30, 40, 70, 0.04);
+}
+
+.employee-card {
+    border-left: 4px solid #3858c9;
+}
+
+.stat-label {
+    color: #758096;
+    font-size: 14px;
+}
+
+.stat-value {
+    font-size: 28px;
+    font-weight: 700;
+    margin-top: 8px;
+    overflow-wrap: anywhere;
+}
+
+.btn {
+    border-radius: 8px;
+}
+
+.list-group-item {
+    padding: 18px;
+    border-color: #e5e8ef;
+}
+
+.form-card {
+    max-width: 760px;
+    margin: 0 auto;
+}
+
+.form-card label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 500;
+}
+
+.form-card form p {
+    margin-bottom: 18px;
+}
+
+.errorlist {
+    color: #b42318;
+    background: #fff0ef;
+    border-radius: 8px;
+    padding: 12px 12px 12px 30px;
+}
+
+.helptext {
+    display: block;
+    color: #758096;
+    font-size: 13px;
+    margin-top: 5px;
+}
+
+.request-status {
+    display: inline-block;
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.status-pending {
+    color: #664d03;
+    background: #fff3cd;
+}
+
+.status-approved {
+    color: #0f5132;
+    background: #d1e7dd;
+}
+
+.status-rejected {
+    color: #842029;
+    background: #f8d7da;
+}
+
+.status-other {
+    color: #41464b;
+    background: #e2e3e5;
+}
+
+.site-footer {
+    padding: 20px 0;
+    color: #758096;
+    background: white;
+    border-top: 1px solid #e5e8ef;
+}

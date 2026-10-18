@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}
+    Заявка №{{ travel_request.id }}
+{% endblock %}
+
+{% block content %}
+    <div class="card">
+        <div class="card-body">
+            <h1>Заявка №{{ travel_request.id }}</h1>
+
+            <p>
+                Сотрудник:
+                <a href="{% url 'employees:detail' travel_request.employee.id %}">
+                    {{ travel_request.employee.name }}
+                </a>
+            </p>
+
+            <p>
+                Направление:
+                {{ travel_request.trip.destination }}
+            </p>
+
+            <p>
+                Цель:
+                {{ travel_request.trip.purpose }}
+            </p>
+
+            <p>
+                Начало:
+                {{ travel_request.trip.start_date|date:"d.m.Y" }}
+            </p>
+
+            <p>
+                Окончание:
+                {{ travel_request.trip.end_date|date:"d.m.Y" }}
+            </p>
+
+            <p>
+                Продолжительность:
+                {{ travel_request.trip.calculate_days }} дн.
+            </p>
+
+            <h2 class="h5">Расходы</h2>
+
+            <p>
+                Проезд:
+                {{ travel_request.trip.travel_cost|floatformat:2 }} руб.
+            </p>
+
+            <p>
+                Проживание:
+                {{ travel_request.trip.hotel_cost|floatformat:2 }} руб.
+            </p>
+
+            <p>
+                Суточные за день:
+                {{ travel_request.trip.daily_allowance|floatformat:2 }} руб.
+            </p>
+
+            <p>
+                <strong>
+                    Общая стоимость:
+                    {{ travel_request.trip.calculate_total_cost|floatformat:2 }}
+                    руб.
+                </strong>
+            </p>
+
+            <p>
+                Лимит бюджета:
+                {{ travel_request.budget_limit|floatformat:2 }} руб.
+            </p>
+
+            <p>
+                Согласование:
+                {% include "trip_requests/includes/request_status.html" with status=travel_request.approval.status only %}
+            </p>
+
+            <div class="d-flex flex-wrap gap-2">
+                <a href="{% url 'trip_requests:edit' travel_request.id %}"
+                   class="btn btn-primary">
+                    Редактировать заявку
+                </a>
+
+                <a href="{% url 'trip_requests:list' %}"
+                   class="btn btn-secondary">
+                    К списку заявок
+                </a>
+            </div>
+        </div>
+    </div>
+{% endblock %}

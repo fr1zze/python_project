@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Командировки — заявки{% endblock %}
+
+{% block content %}
+    <div class="d-flex flex-wrap gap-3 mb-4
+                justify-content-between align-items-center">
+        <h1 class="mb-0">Заявки на командировки</h1>
+
+        <a href="{% url 'trip_requests:create' %}"
+           class="btn btn-primary">
+            Создать заявку
+        </a>
+    </div>
+
+    <p class="text-muted">
+        Всего заявок: {{ travel_requests|length }}.
+        Заявки расположены по дате начала поездки.
+    </p>
+
+    <ul class="list-group">
+        {% for travel_request in travel_requests %}
+            <li class="list-group-item">
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                    <a href="{% url 'trip_requests:detail' travel_request.id %}">
+                        Заявка №{{ travel_request.id }}
+                    </a>
+
+                    {% include "trip_requests/includes/request_status.html" with status=travel_request.approval.status only %}
+                </div>
+
+                <p class="mb-1 mt-2">
+                    Сотрудник:
+                    {{ travel_request.employee.name }}
+                </p>
+
+                <p class="mb-1">
+                    Направление:
+                    {{ travel_request.trip.destination }}
+                </p>
+
+                <p class="mb-0">
+                    Начало:
+                    {{ travel_request.trip.start_date|date:"d.m.Y" }}
+                </p>
+
+                <div class="mt-3">
+                    <a href="{% url 'trip_requests:edit' travel_request.id %}"
+                       class="btn btn-outline-primary btn-sm">
+                        Редактировать
+                    </a>
+                </div>
+            </li>
+        {% empty %}
+            <li class="list-group-item">
+                Заявки пока не созданы.
+            </li>
+        {% endfor %}
+    </ul>
+{% endblock %}

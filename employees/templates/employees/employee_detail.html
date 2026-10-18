@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}{{ employee.name }}{% endblock %}
+
+{% block content %}
+    <div class="card mb-4">
+        <div class="card-body">
+            <h1>{{ employee.name }}</h1>
+
+            <p>ID: {{ employee.id }}</p>
+            <p>
+                Должность:
+                {{ employee.position|default:"Не указана" }}
+            </p>
+        </div>
+    </div>
+
+    <h2 class="h4">Заявки сотрудника</h2>
+
+    <p>
+        Количество заявок: {{ employee_requests|length }}
+    </p>
+
+    <ul class="list-group mb-4">
+        {% for travel_request in employee_requests %}
+            <li class="list-group-item">
+                <a href="{% url 'trip_requests:detail' travel_request.id %}">
+                    Заявка №{{ travel_request.id }}
+                </a>
+
+                — {{ travel_request.trip.destination }}
+
+                {% include "trip_requests/includes/request_status.html" with status=travel_request.approval.status only %}
+            </li>
+        {% empty %}
+            <li class="list-group-item">
+                У сотрудника пока нет заявок.
+            </li>
+        {% endfor %}
+    </ul>
+
+    <div class="d-flex flex-wrap gap-2">
+        <a href="{% url 'employees:edit' employee.id %}"
+           class="btn btn-primary">
+            Редактировать сотрудника
+        </a>
+
+        <a href="{% url 'employees:list' %}"
+           class="btn btn-secondary">
+            К списку сотрудников
+        </a>
+    </div>
+{% endblock %}

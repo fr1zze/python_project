@@ -1,0 +1,17 @@
+{% if status == "одобрена" %}
+    <span class="request-status status-approved">
+        {{ status }}
+    </span>
+{% elif status == "отклонена" %}
+    <span class="request-status status-rejected">
+        {{ status }}
+    </span>
+{% elif status == "на рассмотрении" %}
+    <span class="request-status status-pending">
+        {{ status }}
+    </span>
+{% else %}
+    <span class="request-status status-other">
+        {{ status|default:"Статус не указан" }}
+    </span>
+{% endif %}

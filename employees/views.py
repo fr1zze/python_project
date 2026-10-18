@@ -1,22 +1,12 @@
-from html import escape
-
 from django.conf import settings
-from django.http import HttpResponse
-from django.shortcuts import redirect
+from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_http_methods
 
-from homepage.views import form_page, page
-from models.employees import (
-    Employee,
-    add_employee,
-    find_employee,
-)
+from homepage.views import page_not_found
+from models.employees import Employee, add_employee, find_employee
 from models.travel_requests import find_requests_by_employee
-from storage import (
-    load_employees,
-    load_requests,
-    save_employees,
-)
+from storage import load_employees, load_requests, save_employees
 
 from .forms import EmployeeForm
 
@@ -27,82 +17,23 @@ def employee_list(request):
         settings.BASE_DIR / "data" / "employees.json"
     )
 
-    items = ""
-
-    for employee in employees:
-        items += f"""
-        <li class="list-group-item">
-            <div class="d-flex flex-wrap gap-3
-                        justify-content-between align-items-center">
-                <div>
-                    <a href="/employees/{employee.id}/"
-                       class="fw-semibold text-decoration-none">
-                        {escape(employee.name)}
-                    </a>
-                    <div class="text-muted mt-1">
-                        {escape(employee.position)}
-                    </div>
-                </div>
-
-                <a href="/employees/{employee.id}/edit/"
-                   class="btn btn-outline-primary btn-sm">
-                    Редактировать
-                </a>
-            </div>
-        </li>
-        """
-
-    if not employees:
-        items = """
-        <li class="list-group-item">
-            Сотрудники пока не добавлены.
-        </li>
-        """
-
-    content = f"""
-    <div class="d-flex flex-wrap gap-3 mb-4
-                justify-content-between align-items-center">
-        <h1 class="mb-0">Сотрудники</h1>
-
-        <a href="/employees/new/" class="btn btn-primary">
-            Добавить сотрудника
-        </a>
-    </div>
-
-    <ul class="list-group">
-        {items}
-    </ul>
-    """
-
-    return HttpResponse(
-        page("Командировки — сотрудники", content)
+    return render(
+        request,
+        "employees/employee_list.html",
+        {"employees": employees},
     )
 
 
 def employee_detail(request, employee_id):
-    """Показать сотрудника и связанные с ним заявки."""
+    """Показать сотрудника и его заявки."""
     data_dir = settings.BASE_DIR / "data"
-
     employees = load_employees(
         data_dir / "employees.json"
     )
-    employee = find_employee(
-        employees,
-        employee_id,
-    )
+    employee = find_employee(employees, employee_id)
 
     if employee is None:
-        content = """
-        <h1 class="text-danger">Сотрудник не найден</h1>
-        <a href="/employees/" class="btn btn-secondary">
-            К списку сотрудников
-        </a>
-        """
-
-        return HttpResponse(
-            page("Сотрудник не найден", content),
-            status=404,
-        )
+        return page_not_found(request)
 
     requests = load_requests(
         data_dir / "requests.json",
@@ -113,52 +44,15 @@ def employee_detail(request, employee_id):
         employee.id,
     )
 
-    items = ""
+    context = {
+        "employee": employee,
+        "employee_requests": employee_requests,
+    }
 
-    for travel_request in employee_requests:
-        items += f"""
-        <li class="list-group-item">
-            <a href="/requests/{travel_request.id}/">
-                Заявка №{travel_request.id}
-            </a>
-            — {escape(travel_request.trip.destination)},
-            {escape(travel_request.approval.status)}
-        </li>
-        """
-
-    if not employee_requests:
-        items = """
-        <li class="list-group-item">
-            У сотрудника пока нет заявок.
-        </li>
-        """
-
-    content = f"""
-    <div class="card mb-4">
-        <div class="card-body">
-            <h1 class="h3">{escape(employee.name)}</h1>
-            <p>ID: {employee.id}</p>
-            <p>Должность: {escape(employee.position)}</p>
-        </div>
-    </div>
-
-    <h2 class="h4">Заявки сотрудника</h2>
-    <ul class="list-group mb-4">
-        {items}
-    </ul>
-
-    <a href="/employees/{employee.id}/edit/"
-       class="btn btn-primary me-2">
-        Редактировать сотрудника
-    </a>
-
-    <a href="/employees/" class="btn btn-secondary">
-        К списку сотрудников
-    </a>
-    """
-
-    return HttpResponse(
-        page(employee.name, content)
+    return render(
+        request,
+        "employees/employee_detail.html",
+        context,
     )
 
 
@@ -181,24 +75,22 @@ def employee_create(request):
                 form.cleaned_data["name"],
                 form.cleaned_data["position"],
             )
-            save_employees(
-                filename,
-                employees,
-            )
+            save_employees(filename, employees)
         except ValueError as error:
             form.add_error(None, str(error))
         else:
             return redirect(
-                "employee_detail",
+                "employees:detail",
                 employee_id=employee.id,
             )
 
-    return form_page(
-        request,
-        "Добавить сотрудника",
-        form,
-        "/employees/",
-    )
+    context = {
+        "title": "Добавить сотрудника",
+        "form": form,
+        "back_url": reverse("employees:list"),
+    }
+
+    return render(request, "form.html", context)
 
 
 @require_http_methods(["GET", "POST"])
@@ -208,19 +100,10 @@ def employee_edit(request, employee_id):
     filename = data_dir / "employees.json"
 
     employees = load_employees(filename)
-    employee = find_employee(
-        employees,
-        employee_id,
-    )
+    employee = find_employee(employees, employee_id)
 
     if employee is None:
-        return HttpResponse(
-            page(
-                "Сотрудник не найден",
-                "<h1>Сотрудник не найден</h1>",
-            ),
-            status=404,
-        )
+        return page_not_found(request)
 
     form = EmployeeForm(
         request.POST if request.method == "POST" else None,
@@ -261,7 +144,7 @@ def employee_edit(request, employee_id):
                 except ValueError as error:
                     form.add_error(None, str(error))
                 else:
-                    return redirect("employee_list")
+                    return redirect("employees:list")
 
         elif form.is_valid():
             try:
@@ -270,7 +153,6 @@ def employee_edit(request, employee_id):
                     form.cleaned_data["name"],
                     form.cleaned_data["position"],
                 )
-
                 updated_employees = [
                     updated_employee
                     if item.id == employee.id
@@ -286,25 +168,18 @@ def employee_edit(request, employee_id):
                 form.add_error(None, str(error))
             else:
                 return redirect(
-                    "employee_detail",
+                    "employees:detail",
                     employee_id=employee.id,
                 )
 
-    delete_button = """
-    <button type="submit"
-            name="action"
-            value="delete"
-            formnovalidate
-            class="btn btn-outline-danger ms-sm-auto"
-            onclick="return confirm('Удалить сотрудника?');">
-        Удалить сотрудника
-    </button>
-    """
+    context = {
+        "title": "Редактировать сотрудника",
+        "form": form,
+        "back_url": reverse(
+            "employees:detail",
+            kwargs={"employee_id": employee.id},
+        ),
+        "can_delete": True,
+    }
 
-    return form_page(
-        request,
-        "Редактировать сотрудника",
-        form,
-        f"/employees/{employee.id}/",
-        delete_button,
-    )
+    return render(request, "form.html", context)

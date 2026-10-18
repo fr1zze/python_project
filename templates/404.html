@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}Страница не найдена{% endblock %}
+
+{% block content %}
+    <div class="card">
+        <div class="card-body p-4">
+            <h1>404 — страница не найдена</h1>
+
+            <p class="text-muted">
+                Проверьте адрес. Запрошенная страница
+                или запись не существует.
+            </p>
+
+            <a href="{% url 'homepage:index' %}"
+               class="btn btn-primary">
+                На главную
+            </a>
+        </div>
+    </div>
+{% endblock %}
