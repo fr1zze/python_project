@@ -1,0 +1,26 @@
+{% extends "sql_reports/base.html" %}
+
+{% block sql_content %}
+    <h2 class="h4">Поиск</h2>
+
+    <p>
+        Укажи дату для поиска сотрудников без одобренной поездки.
+        Дополнительно можно найти поездки по направлению.
+    </p>
+
+    <form method="get" class="mb-4">
+        {{ form.as_p }}
+
+        <button type="submit" class="btn btn-primary">
+            Найти
+        </button>
+    </form>
+
+    {% if searched %}
+        {% if has_destination %}
+            {% include "sql_reports/table.html" with table=trips_table embedded=True only %}
+        {% endif %}
+
+        {% include "sql_reports/table.html" with table=employees_table embedded=True only %}
+    {% endif %}
+{% endblock %}

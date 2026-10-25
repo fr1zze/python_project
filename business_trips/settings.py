@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'homepage',
     'employees',
     'trip_requests',
+    "sql_reports",
 ]
 
 MIDDLEWARE = [

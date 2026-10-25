@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}Данные SQLite{% endblock %}
+
+{% block content %}
+    <h1 class="mb-3">Данные SQLite</h1>
+
+    <nav class="nav nav-pills flex-wrap gap-2 mb-4">
+        <a class="nav-link"
+           href="{% url 'sql_reports:employees' %}">
+            Сотрудники
+        </a>
+
+        <a class="nav-link"
+           href="{% url 'sql_reports:trips' %}">
+            Поездки
+        </a>
+
+        <a class="nav-link"
+           href="{% url 'sql_reports:requests' %}">
+            Заявки
+        </a>
+
+        <a class="nav-link"
+           href="{% url 'sql_reports:search' %}">
+            Поиск
+        </a>
+
+        <a class="nav-link"
+           href="{% url 'sql_reports:statistics' %}">
+            Статистика
+        </a>
+    </nav>
+
+    {% block sql_content %}{% endblock %}
+{% endblock %}

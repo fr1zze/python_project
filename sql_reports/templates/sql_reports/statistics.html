@@ -1,0 +1,43 @@
+{% extends "sql_reports/base.html" %}
+
+{% block sql_content %}
+    <h2 class="h4">Общая статистика</h2>
+
+    <ul class="list-group mb-4">
+        <li class="list-group-item">
+            Сотрудников: {{ counts.employees_count }}
+        </li>
+        <li class="list-group-item">
+            Поездок: {{ counts.trips_count }}
+        </li>
+        <li class="list-group-item">
+            Заявок: {{ counts.requests_count }}
+        </li>
+        <li class="list-group-item">
+            Согласований: {{ counts.approvals_count }}
+        </li>
+        <li class="list-group-item">
+            Одобренных заявок: {{ totals.approved_count }}
+        </li>
+        <li class="list-group-item">
+            Стоимость одобренных поездок:
+            {{ totals.approved_cost|floatformat:2 }} руб.
+        </li>
+    </ul>
+
+    {% include "sql_reports/table.html" with table=by_employee embedded=True only %}
+
+    {% include "sql_reports/table.html" with table=by_status embedded=True only %}
+
+    <h2 class="h4">Фильтрация групп</h2>
+
+    <form method="get" class="mb-4">
+        {{ form.as_p }}
+
+        <button type="submit" class="btn btn-primary">
+            Применить
+        </button>
+    </form>
+
+    {% include "sql_reports/table.html" with table=above_threshold embedded=True only %}
+{% endblock %}

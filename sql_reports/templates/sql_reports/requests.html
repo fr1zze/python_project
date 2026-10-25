@@ -1,0 +1,20 @@
+{% extends "sql_reports/base.html" %}
+
+{% block sql_content %}
+    <form method="get" class="mb-4">
+        {{ form.as_p }}
+
+        <button type="submit" class="btn btn-primary">
+            Найти заявки сотрудника
+        </button>
+
+        <a href="{% url 'sql_reports:requests' %}"
+           class="btn btn-secondary">
+            Сбросить
+        </a>
+    </form>
+
+    {% include "sql_reports/table.html" with table=table embedded=True only %}
+
+    {% include "sql_reports/table.html" with table=approved embedded=True only %}
+{% endblock %}
