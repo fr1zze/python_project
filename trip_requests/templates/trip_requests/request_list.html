@@ -14,9 +14,14 @@
     </div>
 
     <p class="text-muted">
-        Всего заявок: {{ travel_requests|length }}.
-        Заявки расположены по дате начала поездки.
+        Всего заявок: {{ page_obj.paginator.count }}.
     </p>
+
+    <form method="get" class="mb-4">
+        {{ form.as_p }}
+        <button class="btn btn-primary" type="submit">Применить</button>
+        <a href="{% url 'trip_requests:list' %}" class="btn btn-secondary">Сбросить</a>
+    </form>
 
     <ul class="list-group">
         {% for travel_request in travel_requests %}
@@ -57,4 +62,5 @@
             </li>
         {% endfor %}
     </ul>
+    {% include "includes/pagination.html" %}
 {% endblock %}

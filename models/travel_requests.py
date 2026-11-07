@@ -18,7 +18,7 @@ class TravelRequest:
             raise ValueError(
                 "Лимит бюджета не может быть отрицательным"
             )
-        
+
         self.id = request_id
         self.employee = employee
         self.trip = trip

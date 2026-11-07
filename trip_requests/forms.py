@@ -1,5 +1,35 @@
 from django import forms
 
+from .models import Approval
+
+
+class RequestFilterForm(forms.Form):
+    employee_id = forms.IntegerField(
+        label="ID сотрудника", required=False, min_value=1,
+    )
+    selected_date = forms.DateField(
+        label="Дата поездки", required=False,
+        widget=forms.DateInput(attrs={"type": "date"}),
+    )
+    status = forms.ChoiceField(
+        label="Статус", required=False,
+        choices=[("", "Все статусы"), *Approval.Status.choices],
+    )
+    destination = forms.CharField(
+        label="Направление", required=False, max_length=150,
+    )
+    q = forms.CharField(
+        label="Поиск по сотруднику, направлению и цели",
+        required=False, max_length=150,
+    )
+    sort = forms.ChoiceField(
+        label="Сортировка", required=False,
+        choices=[("date", "Сначала ранние поездки"),
+                 ("-date", "Сначала поздние поездки"),
+                 ("employee", "По сотруднику"),
+                 ("destination", "По направлению")],
+    )
+
 
 class TravelRequestForm(forms.Form):
     """Форма создания и редактирования заявки."""

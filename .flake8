@@ -1,0 +1,4 @@
+[flake8]
+exclude = .git,__pycache__,.docx_qa,tmp,venv
+per-file-ignores =
+    */migrations/*.py:E501

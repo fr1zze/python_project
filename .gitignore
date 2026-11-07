@@ -211,6 +211,11 @@ tempCodeRunnerFile.py
 # PyPI configuration file
 .pypirc
 
+# Local PR9 backups and PDF inspection images.
+*.pr9-backup
+*.sqlite-backup
+tmp/
+
 # Marimo
 marimo/_static/
 marimo/_lsp/
