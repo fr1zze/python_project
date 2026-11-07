@@ -71,7 +71,6 @@ SELECT
     (SELECT COUNT(*) FROM travel_requests) AS requests_count,
     (SELECT COUNT(*) FROM approvals) AS approvals_count;
 
-
 -- name: approved_totals
 -- 8. Количество и общая стоимость одобренных поездок.
 SELECT

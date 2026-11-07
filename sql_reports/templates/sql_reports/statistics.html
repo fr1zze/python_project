@@ -24,7 +24,7 @@
             {{ totals.approved_cost|floatformat:2 }} руб.
         </li>
     </ul>
-
+    
     {% include "sql_reports/table.html" with table=by_employee embedded=True only %}
 
     {% include "sql_reports/table.html" with table=by_status embedded=True only %}

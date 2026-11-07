@@ -224,7 +224,7 @@ def statistics(request):
             "employees_above_threshold",
             (minimum,),
         )
-
+        
     context = {
         "form": form,
         "counts": fetch_all("counts")[0],

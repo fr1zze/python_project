@@ -50,7 +50,7 @@ def request_detail(request, request_id):
         data_dir / "requests.json",
         employees,
     )
-
+    
     try:
         travel_request = find_request(
             requests,

@@ -16,7 +16,7 @@ def employee_list(request):
     employees = load_employees(
         settings.BASE_DIR / "data" / "employees.json"
     )
-
+    
     return render(
         request,
         "employees/employee_list.html",
