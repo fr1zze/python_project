@@ -128,6 +128,23 @@ class TravelRequest(models.Model):
     def __str__(self):
         return f"Заявка №{self.pk}"
 
+    @property
+    def can_edit(self):
+        return self.approval.status in (
+            Approval.Status.PENDING, Approval.Status.APPROVED,
+        )
+
+    def cancel(self):
+        """Отмена сохраняет заявку и поездку для истории."""
+        changed = Approval.objects.filter(
+            request=self, status__in=[
+                Approval.Status.PENDING, Approval.Status.APPROVED,
+            ],
+        ).update(status=Approval.Status.CANCELLED)
+        if changed:
+            self.approval.status = Approval.Status.CANCELLED
+        return bool(changed)
+
 
 class Approval(models.Model):
     class Status(models.TextChoices):

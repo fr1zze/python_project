@@ -1,14 +1,11 @@
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
-from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
-from django.views.decorators.http import require_http_methods
-
-from employees.models import Employee
+from django.views.decorators.http import require_http_methods, require_POST
 
 from .forms import RequestFilterForm, TravelRequestForm
-from .models import Approval, TravelRequest, Trip
+from .models import Approval
 from .queries import filter_requests, related_requests
 
 
@@ -44,55 +41,18 @@ def request_list(request):
 def request_detail(request, request_id):
     item = get_object_or_404(related_requests(), pk=request_id)
     return render(request, "trip_requests/request_detail.html", {
-        "travel_request": item,
+        "travel_request": item, "can_edit": item.can_edit,
     })
-
-
-def request_initial(item):
-    return {
-        "employee_id": item.employee_id,
-        "budget_limit": item.budget_limit,
-        **{field: getattr(item.trip, field) for field in (
-            "destination", "purpose", "start_date", "end_date",
-            "travel_cost", "hotel_cost", "daily_allowance",
-        )},
-    }
-
-
-def save_request(form, item=None):
-    """Атомарно сохранить поездку, заявку и согласование."""
-    data = form.cleaned_data.copy()
-    employee_id = data.pop("employee_id")
-    budget = data.pop("budget_limit")
-    with transaction.atomic():
-        # Одобренная заявка повторно проходит проверку бизнес-правил.
-        trip = item.trip if item else Trip()
-        for field, value in data.items():
-            setattr(trip, field, value)
-        trip.full_clean()
-        if item is None:
-            item = TravelRequest()
-        item.employee = Employee.objects.get(pk=employee_id)
-        item.budget_limit = budget
-        if item.pk and item.approval.status == Approval.Status.APPROVED:
-            item.validate_approved()
-        trip.save()
-        item.trip = trip
-        item.full_clean()
-        item.save()
-        Approval.objects.get_or_create(request=item)
-    return item
 
 
 def request_form(request, item=None):
     form = TravelRequestForm(
         request.POST if request.method == "POST" else None,
-        employees=Employee.objects.all(),
-        initial=request_initial(item) if item else None,
+        instance=item,
     )
     if request.method == "POST" and form.is_valid():
         try:
-            saved = save_request(form, item)
+            saved = form.save()
         except ValidationError as error:
             form.add_error(None, error)
         else:
@@ -116,5 +76,18 @@ def request_create(request):
 @require_http_methods(["GET", "POST"])
 def request_edit(request, request_id):
     return request_form(request, get_object_or_404(
-        related_requests(), pk=request_id,
+        editable_requests(), pk=request_id,
     ))
+
+
+def editable_requests():
+    return related_requests().filter(approval__status__in=[
+        Approval.Status.PENDING, Approval.Status.APPROVED,
+    ])
+
+
+@require_POST
+def request_cancel(request, request_id):
+    item = get_object_or_404(editable_requests(), pk=request_id)
+    item.cancel()
+    return redirect("trip_requests:detail", request_id=item.pk)

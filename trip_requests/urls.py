@@ -8,6 +8,7 @@ app_name = "trip_requests"
 urlpatterns = [
     path("", views.request_list, name="list"),
     path("new/", views.request_create, name="create"),
+    path("<int:request_id>/cancel/", views.request_cancel, name="cancel"),
     path(
         "<int:request_id>/edit/",
         views.request_edit,

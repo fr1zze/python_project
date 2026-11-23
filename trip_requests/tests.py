@@ -1,18 +1,21 @@
 import sqlite3
 from contextlib import closing
-from datetime import date, timedelta
+from datetime import timedelta
 from decimal import Decimal
 from io import StringIO
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from django.conf import settings
+from django import forms
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.db import IntegrityError, transaction
 from django.db.models.deletion import ProtectedError
-from django.test import TestCase
+from django.test import Client, TestCase
+from django.utils import timezone
 
 from employees.models import Employee
 
@@ -34,7 +37,8 @@ class ORMTests(TestCase):
         )
         cls.trip = Trip.objects.create(
             destination="Москва", purpose="Встреча",
-            start_date=date(2026, 11, 7), end_date=date(2026, 11, 9),
+            start_date=timezone.localdate() + timedelta(days=14),
+            end_date=timezone.localdate() + timedelta(days=16),
             travel_cost=Decimal("100.10"), hotel_cost=Decimal("200.20"),
             daily_allowance=Decimal("50.05"),
         )
@@ -45,9 +49,10 @@ class ORMTests(TestCase):
 
     def form_data(self, **changes):
         data = {
-            "employee_id": self.employee.pk, "destination": "Казань",
-            "purpose": "Доклад", "start_date": "2026-11-08",
-            "end_date": "2026-11-09", "travel_cost": "100.00",
+            "employee": self.employee.pk, "destination": "Казань",
+            "purpose": "Доклад",
+            "start_date": self.trip.start_date + timedelta(days=1),
+            "end_date": self.trip.end_date, "travel_cost": "100.00",
             "hotel_cost": "200.00", "daily_allowance": "50.00",
             "budget_limit": "1000.00",
         }
@@ -123,18 +128,24 @@ class ORMTests(TestCase):
         self.assertContains(response, "Нельзя удалить сотрудника")
 
     def test_request_create_edit_and_rollback(self):
-        response = self.client.post("/requests/new/", self.form_data())
+        response = self.client.post("/requests/new/", self.form_data(
+            employee=self.free.pk,
+        ))
         self.assertEqual(response.status_code, 302)
         item = TravelRequest.objects.exclude(pk=self.item.pk).get()
         self.assertEqual(item.approval.status, "на рассмотрении")
         url = f"/requests/{item.pk}/edit/"
-        self.client.post(url, self.form_data(destination="Сочи"))
+        self.client.post(url, self.form_data(
+            employee=self.free.pk, destination="Сочи",
+        ))
         item.trip.refresh_from_db()
         self.assertEqual(item.trip.destination, "Сочи")
         # Попытка передвинуть одобренную поездку на чужой одобренный интервал.
         Approval.objects.filter(request=item).update(status="одобрена")
         original_url = f"/requests/{self.item.pk}/edit/"
-        response = self.client.post(original_url, self.form_data())
+        response = self.client.post(original_url, self.form_data(
+            employee=self.free.pk,
+        ))
         self.assertContains(response, "У сотрудника есть поездка на эти даты")
         self.trip.refresh_from_db()
         self.assertEqual(self.trip.destination, "Москва")
@@ -148,6 +159,138 @@ class ORMTests(TestCase):
         self.assertContains(response, "Дата окончания раньше даты начала")
         self.assertEqual(Trip.objects.count(), before)
 
+    def test_model_form_validation_and_commit_false(self):
+        from .forms import TravelRequestForm
+
+        self.assertTrue(issubclass(TravelRequestForm, forms.ModelForm))
+        counts = (Trip.objects.count(), TravelRequest.objects.count())
+        invalid = (
+            {"start_date": timezone.localdate() - timedelta(days=1)},
+            {"end_date": "wrong"}, {"travel_cost": "-1.00"},
+            {"budget_limit": "1.00"}, {"employee": "999999"},
+            {"purpose": "   "}, {"employee": ""},
+        )
+        for changes in invalid:
+            with self.subTest(changes=changes):
+                data = self.form_data(employee=self.free.pk)
+                data.update(changes)
+                response = self.client.post("/requests/new/", data)
+                self.assertEqual(response.status_code, 200)
+                self.assertTrue(response.context["form"].errors)
+                self.assertEqual(counts, (
+                    Trip.objects.count(), TravelRequest.objects.count(),
+                ))
+        form = TravelRequestForm(data=self.form_data(employee=self.free.pk))
+        self.assertTrue(form.is_valid(), form.errors)
+        item = form.save(commit=False)
+        self.assertIsNone(item.pk)
+        self.assertIsNone(item.trip.pk)
+        self.assertEqual(counts, (
+            Trip.objects.count(), TravelRequest.objects.count(),
+        ))
+        item = form.save()
+        self.assertEqual(item.approval.status, Approval.Status.PENDING)
+
+    def test_failed_save_rolls_back_all_related_records(self):
+        from .forms import TravelRequestForm
+
+        form = TravelRequestForm(data=self.form_data(employee=self.free.pk))
+        self.assertTrue(form.is_valid(), form.errors)
+        with patch(
+            "trip_requests.forms.Approval.objects.get_or_create",
+            side_effect=IntegrityError("test failure"),
+        ):
+            with self.assertRaises(IntegrityError):
+                form.save()
+        self.assertEqual(Trip.objects.count(), 1)
+        self.assertEqual(TravelRequest.objects.count(), 1)
+        self.assertEqual(Approval.objects.count(), 1)
+
+    def test_create_conflict_and_cancelled_trip_does_not_block(self):
+        response = self.client.post("/requests/new/", self.form_data())
+        self.assertContains(response, "У сотрудника есть поездка на эти даты")
+        self.assertEqual(Trip.objects.count(), 1)
+        self.item.cancel()
+        response = self.client.post("/requests/new/", self.form_data(
+            status=Approval.Status.APPROVED,
+        ))
+        self.assertEqual(response.status_code, 302)
+        created = TravelRequest.objects.exclude(pk=self.item.pk).get()
+        self.assertEqual(created.approval.status, Approval.Status.PENDING)
+
+    def test_edit_same_trip_preserves_identity_and_status(self):
+        url = f"/requests/{self.item.pk}/edit/"
+        response = self.client.get(url)
+        self.assertEqual(response.context["form"].instance.pk, self.item.pk)
+        self.assertEqual(response.context["form"].initial["start_date"],
+                         self.trip.start_date)
+        response = self.client.post(url, self.form_data(
+            start_date=self.trip.start_date, destination="Сочи",
+        ))
+        self.assertEqual(response.status_code, 302)
+        self.item.refresh_from_db()
+        self.assertEqual(self.item.trip_id, self.trip.pk)
+        self.assertEqual(self.item.trip.destination, "Сочи")
+        self.assertEqual(self.item.approval.status, Approval.Status.APPROVED)
+        self.assertEqual(TravelRequest.objects.count(), 1)
+        self.assertEqual(Trip.objects.count(), 1)
+
+    def test_historical_date_can_be_kept_but_not_changed_to_past(self):
+        yesterday = timezone.localdate() - timedelta(days=1)
+        Trip.objects.filter(pk=self.trip.pk).update(start_date=yesterday)
+        url = f"/requests/{self.item.pk}/edit/"
+        response = self.client.post(url, self.form_data(
+            start_date=yesterday, budget_limit="10000.00",
+        ))
+        self.assertEqual(response.status_code, 302)
+        response = self.client.post(url, self.form_data(
+            start_date=yesterday - timedelta(days=1),
+        ))
+        self.assertContains(response, "Дата начала не может быть в прошлом")
+        self.trip.refresh_from_db()
+        self.assertEqual(self.trip.start_date, yesterday)
+
+    def test_cancel_post_only_keeps_history_and_frees_employee(self):
+        url = f"/requests/{self.item.pk}/cancel/"
+        self.assertEqual(self.client.get(url).status_code, 405)
+        self.item.approval.refresh_from_db()
+        self.assertEqual(self.item.approval.status, Approval.Status.APPROVED)
+        response = self.client.post(url)
+        self.assertRedirects(response, f"/requests/{self.item.pk}/")
+        self.item.approval.refresh_from_db()
+        self.assertEqual(self.item.approval.status, Approval.Status.CANCELLED)
+        self.assertEqual(TravelRequest.objects.count(), 1)
+        self.assertEqual(Trip.objects.count(), 1)
+        self.assertIn(self.employee, available_employees(self.trip.start_date))
+        self.assertEqual(self.client.post(url).status_code, 404)
+        self.assertEqual(self.client.get(
+            f"/requests/{self.item.pk}/edit/",
+        ).status_code, 404)
+        self.assertEqual(self.client.post(
+            "/requests/999999/cancel/",
+        ).status_code, 404)
+
+    def test_csrf_protects_create_edit_and_cancel(self):
+        client = Client(enforce_csrf_checks=True)
+        client.get("/requests/new/")
+        token = client.cookies["csrftoken"].value
+        data = self.form_data(employee=self.free.pk)
+        self.assertEqual(client.post("/requests/new/", data).status_code, 403)
+        self.assertEqual(client.post(
+            "/requests/new/", data, HTTP_X_CSRFTOKEN=token,
+        ).status_code, 302)
+        item = TravelRequest.objects.exclude(pk=self.item.pk).get()
+        edit_url = f"/requests/{item.pk}/edit/"
+        self.assertEqual(client.post(edit_url, data).status_code, 403)
+        self.assertEqual(client.post(
+            edit_url, data, HTTP_X_CSRFTOKEN=token,
+        ).status_code, 302)
+        cancel_url = f"/requests/{item.pk}/cancel/"
+        self.assertEqual(client.post(cancel_url).status_code, 403)
+        self.assertEqual(client.post(
+            cancel_url, HTTP_X_CSRFTOKEN=token,
+        ).status_code, 302)
+
     def test_filter_search_sort_and_pagination(self):
         for index in range(11):
             trip = Trip.objects.get(pk=self.trip.pk)
@@ -158,7 +301,7 @@ class ORMTests(TestCase):
             )
             Approval.objects.create(request=item)
         params = {"employee_id": self.employee.pk, "destination": "Москва",
-                  "q": "Встреча", "selected_date": "2026-11-09",
+                  "q": "Встреча", "selected_date": self.trip.end_date,
                   "sort": "-date"}
         response = self.client.get("/requests/", params)
         self.assertEqual(response.context["page_obj"].paginator.count, 12)
@@ -189,7 +332,7 @@ class ORMTests(TestCase):
             self.assertEqual(response.status_code, 200)
             self.assertTrue(response.context["form"].errors)
         response = self.client.get("/sql/search/", {
-            "destination": "Моск", "selected_date": "2026-11-07",
+            "destination": "Моск", "selected_date": self.trip.start_date,
         })
         self.assertTrue(response.context["searched"])
         self.assertEqual(len(response.context["trips_table"]["rows"]), 1)
@@ -198,8 +341,8 @@ class ORMTests(TestCase):
     def test_sorting_by_date_and_employee(self):
         trip = Trip.objects.get(pk=self.trip.pk)
         trip.pk = None
-        trip.start_date = date(2026, 12, 1)
-        trip.end_date = date(2026, 12, 2)
+        trip.start_date = self.trip.end_date + timedelta(days=30)
+        trip.end_date = trip.start_date + timedelta(days=1)
         trip.save()
         later = TravelRequest.objects.create(
             employee=self.free, trip=trip, budget_limit=1000,
