@@ -153,6 +153,7 @@ activemq-data/
 .env
 .envrc
 /admin-access.txt
+/media/
 .venv
 env/
 venv/

@@ -26,9 +26,12 @@ def employee_detail(request, employee_id=None, slug=None):
 
 @require_http_methods(["GET", "POST"])
 def employee_create(request):
-    form = EmployeeForm(request.POST if request.method == "POST" else None)
+    form = EmployeeForm(
+        request.POST if request.method == "POST" else None,
+        request.FILES if request.method == "POST" else None,
+    )
     if request.method == "POST" and form.is_valid():
-        employee = Employee.objects.create(**form.cleaned_data)
+        employee = form.save()
         return redirect("employees:detail", employee_id=employee.pk)
     return render(request, "form.html", {
         "title": "Добавить сотрудника", "form": form,
@@ -41,7 +44,8 @@ def employee_edit(request, employee_id):
     employee = get_object_or_404(Employee, pk=employee_id)
     form = EmployeeForm(
         request.POST if request.method == "POST" else None,
-        initial={"name": employee.name, "position": employee.position},
+        request.FILES if request.method == "POST" else None,
+        instance=employee,
     )
     if request.method == "POST":
         if request.POST.get("action") == "delete":
@@ -55,10 +59,7 @@ def employee_edit(request, employee_id):
             else:
                 return redirect("employees:list")
         elif form.is_valid():
-            employee.name = form.cleaned_data["name"]
-            employee.position = form.cleaned_data["position"]
-            employee.full_clean()
-            employee.save()
+            employee = form.save()
             return redirect("employees:detail", employee_id=employee.pk)
     return render(request, "form.html", {
         "title": "Редактировать сотрудника", "form": form,

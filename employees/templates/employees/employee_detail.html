@@ -6,6 +6,10 @@
     <div class="card mb-4">
         <div class="card-body">
             <h1>{{ employee.name }}</h1>
+            {% if employee.photo %}
+                <img src="{{ employee.photo.url }}" alt="{{ employee.name }}"
+                     class="img-fluid rounded mb-3" width="240">
+            {% endif %}
 
             <p>ID: {{ employee.id }}</p>
             <p>

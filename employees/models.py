@@ -8,6 +8,7 @@ class Employee(models.Model):
 
     name = models.CharField("ФИО", max_length=150)
     position = models.CharField("Должность", max_length=150)
+    photo = models.ImageField("Фотография", upload_to="employees/", blank=True)
     slug = models.SlugField("Адрес страницы", max_length=170, unique=True,
                             blank=True)
 

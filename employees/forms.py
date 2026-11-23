@@ -1,7 +1,9 @@
 from django import forms
 
+from .models import Employee
 
-class EmployeeForm(forms.Form):
+
+class EmployeeForm(forms.ModelForm):
     """Форма создания и редактирования сотрудника."""
 
     name = forms.CharField(
@@ -25,3 +27,11 @@ class EmployeeForm(forms.Form):
             }
         ),
     )
+
+    class Meta:
+        model = Employee
+        fields = ("name", "position", "photo")
+        widgets = {
+            "photo": forms.ClearableFileInput(attrs={"class": "form-control"}),
+        }
+        help_texts = {"photo": "Необязательная фотография сотрудника."}
