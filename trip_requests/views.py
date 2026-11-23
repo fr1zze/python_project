@@ -15,7 +15,7 @@ from .queries import filter_requests, related_requests
 SORT_FIELDS = {
     "date": ("trip__start_date", "id"),
     "-date": ("-trip__start_date", "id"),
-    "employee": ("employee__name", "trip__start_date", "id"),
+    "employee": ("-employee__name", "trip__start_date", "id"),
     "destination": ("trip__destination", "trip__start_date", "id"),
 }
 
