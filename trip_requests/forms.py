@@ -26,7 +26,7 @@ class RequestFilterForm(forms.Form):
         label="Сортировка", required=False,
         choices=[("date", "Сначала ранние поездки"),
                  ("-date", "Сначала поздние поездки"),
-                 ("employee", "По сотруднику"),
+                 ("employee", "По сотруднику (Я–А)"),
                  ("destination", "По направлению")],
     )
 

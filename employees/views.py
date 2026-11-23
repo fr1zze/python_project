@@ -13,8 +13,9 @@ def employee_list(request):
     })
 
 
-def employee_detail(request, employee_id):
-    employee = get_object_or_404(Employee, pk=employee_id)
+def employee_detail(request, employee_id=None, slug=None):
+    lookup = {"slug": slug} if slug is not None else {"pk": employee_id}
+    employee = get_object_or_404(Employee, **lookup)
     return render(request, "employees/employee_detail.html", {
         "employee": employee,
         "employee_requests": employee.travel_requests.select_related(

@@ -24,6 +24,8 @@ class Trip(models.Model):
     daily_allowance = money_field("Суточные за день")
 
     class Meta:
+        verbose_name = "Поездка"
+        verbose_name_plural = "Поездки"
         ordering = ("start_date", "id")
         constraints = [
             models.CheckConstraint(
@@ -54,17 +56,54 @@ class Trip(models.Model):
         return self.destination
 
 
+class TravelRequestQuerySet(models.QuerySet):
+    def approved(self):
+        return self.filter(approval__status=Approval.Status.APPROVED)
+
+    def pending(self):
+        return self.filter(approval__status=Approval.Status.PENDING)
+
+    def cancelled(self):
+        return self.filter(approval__status=Approval.Status.CANCELLED)
+
+    def rejected(self):
+        return self.filter(approval__status=Approval.Status.REJECTED)
+
+    def for_date(self, selected_date):
+        return self.filter(trip__start_date__lte=selected_date,
+                           trip__end_date__gte=selected_date)
+
+    def with_details(self):
+        return self.select_related("employee", "trip", "approval")
+
+    def rows(self):
+        """Словари для табличного отчёта; JOIN выполняется одним запросом."""
+        return self.annotate(
+            employee_name=models.F("employee__name"),
+            destination=models.F("trip__destination"),
+            start_date=models.F("trip__start_date"),
+            end_date=models.F("trip__end_date"),
+            status=models.F("approval__status"),
+        ).values("id", "employee_name", "destination", "start_date",
+                 "end_date", "status", "budget_limit")
+
+
 class TravelRequest(models.Model):
     employee = models.ForeignKey(
         "employees.Employee", on_delete=models.PROTECT,
         related_name="travel_requests",
+        verbose_name="Сотрудник",
     )
     trip = models.OneToOneField(
         Trip, on_delete=models.PROTECT, related_name="travel_request",
+        verbose_name="Поездка",
     )
     budget_limit = money_field("Лимит бюджета")
+    objects = TravelRequestQuerySet.as_manager()
 
     class Meta:
+        verbose_name = "Заявка на командировку"
+        verbose_name_plural = "Заявки на командировки"
         ordering = ("trip__start_date", "id")
         constraints = [
             models.CheckConstraint(
@@ -99,6 +138,7 @@ class Approval(models.Model):
 
     request = models.OneToOneField(
         TravelRequest, on_delete=models.CASCADE, related_name="approval",
+        verbose_name="Заявка",
     )
     status = models.CharField(
         "Статус", max_length=20, choices=Status.choices,
@@ -106,6 +146,8 @@ class Approval(models.Model):
     )
 
     class Meta:
+        verbose_name = "Согласование"
+        verbose_name_plural = "Согласования"
         constraints = [
             models.CheckConstraint(
                 condition=models.Q(status__in=[

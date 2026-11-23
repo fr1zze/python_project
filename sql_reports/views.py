@@ -7,7 +7,7 @@ from django.shortcuts import render
 from employees.models import Employee
 from trip_requests.models import Approval, TravelRequest, Trip
 from trip_requests.queries import (
-    approved_totals, available_employees, employee_counts, related_requests,
+    approved_totals, available_employees, employee_counts, status_totals,
 )
 
 from .forms import EmployeeFilterForm, SearchForm, StatisticsForm
@@ -44,7 +44,7 @@ def trip_list(request):
 
 def request_list(request):
     form = EmployeeFilterForm(request.GET or None)
-    queryset = related_requests()
+    queryset = TravelRequest.objects.all()
     if form.is_bound:
         if form.is_valid():
             if form.cleaned_data["employee_id"] is not None:
@@ -53,12 +53,7 @@ def request_list(request):
                 )
         else:
             queryset = queryset.none()
-    rows = [{
-        "id": item.pk, "employee_name": item.employee.name,
-        "destination": item.trip.destination,
-        "start_date": item.trip.start_date, "end_date": item.trip.end_date,
-        "status": item.approval.status, "budget_limit": item.budget_limit,
-    } for item in queryset]
+    rows = queryset.rows()
     return render(request, "sql_reports/requests.html", {
         "form": form,
         "table": make_table(
@@ -120,6 +115,7 @@ def statistics(request):
             "approvals_count": Approval.objects.count(),
         },
         "totals": approved_totals(),
+        "status_totals": status_totals(),
         "by_employee": make_table(
             "Количество заявок по сотрудникам",
             ("id", "name", "request_count"),

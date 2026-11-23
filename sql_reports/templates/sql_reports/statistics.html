@@ -17,6 +17,12 @@
             Согласований: {{ counts.approvals_count }}
         </li>
         <li class="list-group-item">
+            На рассмотрении: {{ status_totals.pending }} ·
+            Одобрено: {{ status_totals.approved }} ·
+            Отклонено: {{ status_totals.rejected }} ·
+            Отменено: {{ status_totals.cancelled }}
+        </li>
+        <li class="list-group-item">
             Одобренных заявок: {{ totals.approved_count }}
         </li>
         <li class="list-group-item">

@@ -8,6 +8,8 @@ app_name = "employees"
 urlpatterns = [
     path("", views.employee_list, name="list"),
     path("new/", views.employee_create, name="create"),
+    path("profile/<slug:slug>/", views.employee_detail,
+         name="detail_by_slug"),
     path(
         "<int:employee_id>/edit/",
         views.employee_edit,

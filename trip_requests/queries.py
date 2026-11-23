@@ -12,14 +12,12 @@ from .models import Approval, TravelRequest
 
 
 def related_requests():
-    return TravelRequest.objects.select_related("employee", "trip", "approval")
+    return TravelRequest.objects.with_details()
 
 
 def available_employees(selected_date):
-    busy = TravelRequest.objects.filter(
-        approval__status=Approval.Status.APPROVED,
-        trip__start_date__lte=selected_date,
-        trip__end_date__gte=selected_date,
+    busy = TravelRequest.objects.approved().for_date(
+        selected_date,
     ).values("employee_id")
     return Employee.objects.exclude(pk__in=busy)
 
@@ -36,11 +34,27 @@ def approved_totals():
         + F("trip__daily_allowance") * days,
         output_field=DecimalField(max_digits=18, decimal_places=2),
     )
-    return TravelRequest.objects.filter(
-        approval__status=Approval.Status.APPROVED,
-    ).aggregate(
+    return TravelRequest.objects.approved().aggregate(
         approved_count=Count("pk"),
         approved_cost=Sum(cost, default=Decimal("0.00")),
+    )
+
+
+def status_totals():
+    return TravelRequest.objects.aggregate(
+        total=Count("pk"),
+        pending=Count("pk", filter=Q(
+            approval__status=Approval.Status.PENDING,
+        )),
+        approved=Count("pk", filter=Q(
+            approval__status=Approval.Status.APPROVED,
+        )),
+        rejected=Count("pk", filter=Q(
+            approval__status=Approval.Status.REJECTED,
+        )),
+        cancelled=Count("pk", filter=Q(
+            approval__status=Approval.Status.CANCELLED,
+        )),
     )
 
 
@@ -54,10 +68,7 @@ def filter_requests(queryset, data):
     if data.get("employee_id"):
         queryset = queryset.filter(employee_id=data["employee_id"])
     if data.get("selected_date"):
-        queryset = queryset.filter(
-            trip__start_date__lte=data["selected_date"],
-            trip__end_date__gte=data["selected_date"],
-        )
+        queryset = queryset.for_date(data["selected_date"])
     if data.get("status"):
         queryset = queryset.filter(approval__status=data["status"])
     if data.get("destination"):

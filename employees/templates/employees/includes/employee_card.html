@@ -1,7 +1,7 @@
 <div class="card employee-card h-100">
     <div class="card-body">
         <h2 class="h5">
-            <a href="{% url 'employees:detail' employee.id %}">
+            <a href="{{ employee.get_absolute_url }}">
                 {{ employee.name|default:"ФИО не указано" }}
             </a>
         </h2>

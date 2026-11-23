@@ -7,6 +7,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.db import IntegrityError, transaction
@@ -18,6 +19,7 @@ from employees.models import Employee
 from .models import Approval, TravelRequest, Trip
 from .queries import (
     approved_totals, available_employees, employee_counts, related_requests,
+    status_totals,
 )
 
 
@@ -206,13 +208,145 @@ class ORMTests(TestCase):
         for sort, expected in (
             ("date", [self.item.pk, later.pk]),
             ("-date", [later.pk, self.item.pk]),
-            ("employee", [self.item.pk, later.pk]),
+            ("employee", [later.pk, self.item.pk]),
         ):
             response = self.client.get("/requests/", {"sort": sort})
             self.assertEqual(
                 [item.pk for item in response.context["travel_requests"]],
                 expected,
             )
+
+    def test_queryset_methods_rows_and_status_totals(self):
+        self.assertEqual(TravelRequest.objects.approved().for_date(
+            self.trip.end_date,
+        ).get(), self.item)
+        self.assertFalse(TravelRequest.objects.cancelled().exists())
+        self.assertFalse(TravelRequest.objects.pending().exists())
+        self.assertFalse(TravelRequest.objects.rejected().exists())
+        with self.assertNumQueries(1):
+            row = TravelRequest.objects.rows().get(pk=self.item.pk)
+        self.assertEqual(row["employee_name"], self.employee.name)
+        self.assertEqual(row["destination"], "Москва")
+        self.assertEqual(status_totals(), {
+            "total": 1, "approved": 1, "pending": 0,
+            "rejected": 0, "cancelled": 0,
+        })
+        Approval.objects.update(status=Approval.Status.CANCELLED)
+        self.assertEqual(TravelRequest.objects.cancelled().count(), 1)
+        self.assertEqual(status_totals()["cancelled"], 1)
+        self.assertEqual(status_totals()["approved"], 0)
+
+    def test_admin_pages_search_filter_and_inline(self):
+        user = get_user_model().objects.create_superuser(
+            username="test-admin", password="test-admin-password",
+        )
+        self.client.force_login(user)
+        for url in (
+            "/admin/", "/admin/employees/employee/",
+            f"/admin/employees/employee/{self.employee.pk}/change/",
+            "/admin/trip_requests/trip/",
+            f"/admin/trip_requests/trip/{self.trip.pk}/change/",
+            "/admin/trip_requests/travelrequest/",
+            f"/admin/trip_requests/travelrequest/{self.item.pk}/change/",
+            "/admin/trip_requests/approval/",
+            f"/admin/trip_requests/approval/{self.item.approval.pk}/change/",
+        ):
+            with self.subTest(url=url):
+                self.assertEqual(self.client.get(url).status_code, 200)
+        url = "/admin/trip_requests/travelrequest/"
+        response = self.client.get(url, {
+            "q": "Москва", "approval__status__exact": "одобрена",
+        })
+        self.assertEqual(response.context["cl"].result_count, 1)
+        response = self.client.get(url, {"q": "Неизвестный город"})
+        self.assertEqual(response.context["cl"].result_count, 0)
+        response = self.client.get(
+            f"/admin/employees/employee/{self.employee.pk}/change/",
+        )
+        self.assertContains(response, "Москва")
+
+    def test_admin_business_validation(self):
+        from .admin_forms import (
+            ApprovalAdminForm, TravelRequestAdminForm, TripAdminForm,
+        )
+        form = TravelRequestAdminForm(data={
+            "employee": self.employee.pk, "trip": self.trip.pk,
+            "budget_limit": "1.00",
+        }, instance=self.item)
+        self.assertFalse(form.is_valid())
+        self.assertIn("Стоимость превышает", str(form.errors))
+        trip = Trip.objects.get(pk=self.trip.pk)
+        form = TripAdminForm(data={
+            "destination": trip.destination, "purpose": trip.purpose,
+            "start_date": trip.start_date, "end_date": trip.end_date,
+            "travel_cost": "2000.00", "hotel_cost": trip.hotel_cost,
+            "daily_allowance": trip.daily_allowance,
+        }, instance=trip)
+        self.assertFalse(form.is_valid())
+        self.assertIn("Стоимость превышает", str(form.errors))
+        trip = Trip.objects.get(pk=self.trip.pk)
+        trip.pk = None
+        trip.save()
+        other = TravelRequest.objects.create(
+            employee=self.employee, trip=trip, budget_limit=1000,
+        )
+        approval = Approval.objects.create(request=other)
+        form = ApprovalAdminForm(data={
+            "request": other.pk, "status": Approval.Status.APPROVED,
+        }, instance=approval)
+        self.assertFalse(form.is_valid())
+        self.assertIn("есть поездка", str(form.errors))
+        response = self.client.get("/admin/")
+        self.assertEqual(response.status_code, 302)
+
+    def test_admin_create_request_and_change_status(self):
+        user = get_user_model().objects.create_superuser(
+            username="admin-crud", password="test-admin-password",
+        )
+        self.client.force_login(user)
+        trip = Trip.objects.get(pk=self.trip.pk)
+        trip.pk = None
+        trip.save()
+        url = "/admin/trip_requests/travelrequest/add/"
+        response = self.client.post(url, {
+            "employee": self.free.pk, "trip": trip.pk,
+            "budget_limit": "1000.00", "_save": "Сохранить",
+            "approval-TOTAL_FORMS": "0", "approval-INITIAL_FORMS": "0",
+            "approval-MIN_NUM_FORMS": "0", "approval-MAX_NUM_FORMS": "1",
+        })
+        self.assertEqual(response.status_code, 302)
+        item = TravelRequest.objects.get(trip=trip)
+        approval = item.approval
+        self.assertEqual(approval.status, Approval.Status.PENDING)
+        url = f"/admin/trip_requests/approval/{approval.pk}/change/"
+        response = self.client.post(url, {
+            "status": Approval.Status.APPROVED, "_save": "Сохранить",
+        })
+        self.assertEqual(response.status_code, 302)
+        approval.refresh_from_db()
+        self.assertEqual(approval.status, Approval.Status.APPROVED)
+        self.assertNotIn(self.free, available_employees(trip.start_date))
+        response = self.client.post(url, {
+            "status": Approval.Status.CANCELLED, "_save": "Сохранить",
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertIn(self.free, available_employees(trip.start_date))
+        response = self.client.get(
+            f"/admin/trip_requests/approval/{approval.pk}/delete/",
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_changed_cost_and_related_values(self):
+        self.trip.travel_cost = Decimal("110.10")
+        self.trip.save()
+        self.trip.refresh_from_db()
+        self.assertEqual(self.trip.calculate_total_cost(), Decimal("460.45"))
+        self.assertEqual(approved_totals()["approved_cost"], Decimal("460.45"))
+        self.employee.name = "Новое имя"
+        self.employee.save()
+        self.assertEqual(TravelRequest.objects.rows().get(
+            pk=self.item.pk,
+        )["employee_name"], "Новое имя")
 
 
 class ImportTests(TestCase):
